@@ -41,7 +41,7 @@ class DataLoader(object):
         return files_
 
     @staticmethod
-    def _parse_index(file_name, nR = 0):
+    def _parse_index(file_name, nR = 0, nC = 0):
         if nR == 0:
             tags = os.path.splitext(file_name)[0].split('_')
             xy = list()
@@ -50,41 +50,42 @@ class DataLoader(object):
             x_str = xy[0]
             y_str = xy[1]
         else:
-            arr = np.arange(48).reshape(6, -1, order='F')[::-1, :]
+            arr = np.arange(nR * nC).reshape(nR, -1, order='F')[::-1, :]
             arr = np.where(np.arange(arr.shape[1]) % 2, arr[::-1, :], arr)
-            tag = int(re.match('fov.*(\d+).*', file_name).group(1))
-            y_str, x_str = np.where(arr == tag)
+            tag = int(re.match('fov.*?(\d+).*?', file_name).group(1))
+            x_str, y_str = np.where(arr == tag)
+            x_str = nR - int(x_str) - 1
         return [int(y_str), int(x_str)]
 
-    def _r0c0(self, fovs, nR = 0):
+    def _r0c0(self, fovs, nR = 0, nC = 0):
         names = list()
         for fov in fovs:
-            c, r = self._parse_index(os.path.basename(fov), nR = nR)
+            c, r = self._parse_index(os.path.basename(fov), nR = nR, nC = nC)
             names.append([r, c])             
         grid = np.array(names, dtype=int)
         r0, c0 = [np.min(grid[:, 0]), np.min(grid[:, 1])]
         return r0, c0
 
-    def load(self, src, nR = 0):
+    def load(self, src, nR = 0, nC = 0):
         self.fov_path = src
         # just support format: row_col.tif, other format can be modified by imageQC.
         fovs = self.search_files(self.fov_path, self._support)
-        r0, c0 = self._r0c0(fovs, nR = nR)
+        r0, c0 = self._r0c0(fovs, nR = nR, nC = nC)
         if not len(fovs): return 1
 
         self.data_pool = dict()
         for fov in fovs:
-            c, r = self._parse_index(os.path.basename(fov))
+            c, r = self._parse_index(os.path.basename(fov), nR = nR, nC = nC)
             c, r = [c - c0, r - r0]
             self.data_pool['{}_{}'.format(str(r).zfill(4), str(c).zfill(4))] = fov
 
         return self.data_pool
 
 
-def stitch(input: str, output: str, overlap=0.12, nR = 0):
+def stitch(input: str, output: str, overlap=0.12, nR = 0, nC = 0):
     stitcher = neighbor2_stitcher.Neighbor2(overlap=overlap)
     dl = DataLoader()
-    dct = dl.load(input, nR = nR)
+    dct = dl.load(input, nR = nR, nC = nC)
     import time
     t0 = time.time()
     stitcher.stitching(dct)
@@ -96,7 +97,7 @@ def stitch(input: str, output: str, overlap=0.12, nR = 0):
     stitcher.export_loc(os.path.dirname(output))
 
 
-def main(argv): stitch(input=FLAGS.input, output=FLAGS.output, overlap=FLAGS.overlap, nR = FLAGS.nR)
+def main(argv): stitch(input=FLAGS.input, output=FLAGS.output, overlap=FLAGS.overlap, nR = FLAGS.nR, nC = FLAGS.nC)
 
 
 """
@@ -110,4 +111,5 @@ if __name__ == '__main__':
     flags.DEFINE_string('output', '', 'Save path of stitch result files')
     flags.DEFINE_float('overlap', 0.12, 'FOV images Overlap.', lower_bound=0)
     flags.DEFINE_float('nR', 0, 'rows')
+    flags.DEFINE_float('nC', 0, 'cols')
     app.run(main)
