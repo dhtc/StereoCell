@@ -16,7 +16,7 @@
 import glog
 import numpy as np
 from absl import flags, app
-from stitch import neighbor2_stitcher
+from .stitch import neighbor2_stitcher
 import os
 
 PROG_VERSION = '0.1.0'
