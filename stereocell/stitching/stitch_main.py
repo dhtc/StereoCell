@@ -18,7 +18,7 @@ import numpy as np
 from absl import flags, app
 from .stitch import neighbor2_stitcher
 import os
-
+import re
 PROG_VERSION = '0.1.0'
 PROG_DATE = '2022-07-26'
 
@@ -51,7 +51,6 @@ class DataLoader(object):
         else:
             arr = np.arange(48).reshape(6, -1, order='F')[::-1, :]
             arr = np.where(np.arange(arr.shape[1]) % 2, arr[::-1, :], arr)
-            import re
             tag = int(re.match('fov.*(\d+).*', file_name).group(1))
             y_str, x_str = np.where(arr == tag)
         return [int(y_str), int(x_str)]
@@ -69,6 +68,7 @@ class DataLoader(object):
         self.fov_path = src
         # just support format: row_col.tif, other format can be modified by imageQC.
         fovs = self.search_files(self.fov_path, self._support)
+        fovs = list(filter(lambda x: re.match('fov', x), fovs))
         r0, c0 = self._r0c0(fovs, nR = nR)
         if not len(fovs): return 1
 
