@@ -36,7 +36,8 @@ class DataLoader(object):
             if len(files) == 0: continue
             for f in files:
                 fn, ext = os.path.splitext(f)
-                if ext in exts: files_.append(os.path.join(root, f))
+                if re.match('fov', fn):
+                    if ext in exts: files_.append(os.path.join(root, f))
         return files_
 
     @staticmethod
@@ -68,7 +69,6 @@ class DataLoader(object):
         self.fov_path = src
         # just support format: row_col.tif, other format can be modified by imageQC.
         fovs = self.search_files(self.fov_path, self._support)
-        fovs = list(filter(lambda x: re.match('fov', x), fovs))
         r0, c0 = self._r0c0(fovs, nR = nR)
         if not len(fovs): return 1
 
