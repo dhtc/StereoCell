@@ -52,7 +52,7 @@ class DataLoader(object):
             arr = np.arange(48).reshape(6, -1, order='F')[::-1, :]
             arr = np.where(np.arange(arr.shape[1]) % 2, arr[::-1, :], arr)
             import re
-            tag = int(re.match('.*(\d+).*', file_name).group(1))
+            tag = int(re.match('fov.*(\d+).*', file_name).group(1))
             y_str, x_str = np.where(arr == tag)
         return [int(y_str), int(x_str)]
 
