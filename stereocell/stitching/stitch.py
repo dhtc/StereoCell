@@ -40,29 +40,36 @@ class DataLoader(object):
         return files_
 
     @staticmethod
-    def _parse_index(file_name):
-        tags = os.path.splitext(file_name)[0].split('_')
-        xy = list()
-        for tag in tags:
-            if (len(tag) == 4) and tag.isdigit(): xy.append(tag)
-        x_str = xy[0]
-        y_str = xy[1]
+    def _parse_index(file_name, nR = 0):
+        if nR == 0:
+            tags = os.path.splitext(file_name)[0].split('_')
+            xy = list()
+            for tag in tags:
+                if (len(tag) == 4) and tag.isdigit(): xy.append(tag)
+            x_str = xy[0]
+            y_str = xy[1]
+        else:
+            arr = np.arange(48).reshape(6, -1, order='F')[::-1, :]
+            arr = np.where(np.arange(arr.shape[1]) % 2, arr[::-1, :], arr)
+            import re
+            tag = int(re.match('.*(\d+).*', file_name).group(1))
+            y_str, x_str = np.where(arr == tag)
         return [int(y_str), int(x_str)]
 
-    def _r0c0(self, fovs):
+    def _r0c0(self, fovs, nR = 0):
         names = list()
         for fov in fovs:
-            c, r = self._parse_index(os.path.basename(fov))
-            names.append([r, c])
+            c, r = self._parse_index(os.path.basename(fov), nR = nR)
+            names.append([r, c])             
         grid = np.array(names, dtype=int)
         r0, c0 = [np.min(grid[:, 0]), np.min(grid[:, 1])]
         return r0, c0
 
-    def load(self, src):
+    def load(self, src, nR = 0):
         self.fov_path = src
         # just support format: row_col.tif, other format can be modified by imageQC.
         fovs = self.search_files(self.fov_path, self._support)
-        r0, c0 = self._r0c0(fovs)
+        r0, c0 = self._r0c0(fovs, nR = nR)
         if not len(fovs): return 1
 
         self.data_pool = dict()
@@ -74,10 +81,10 @@ class DataLoader(object):
         return self.data_pool
 
 
-def stitch(input: str, output: str, overlap=0.12):
+def stitch(input: str, output: str, overlap=0.12, nR = 0):
     stitcher = neighbor2_stitcher.Neighbor2(overlap=overlap)
     dl = DataLoader()
-    dct = dl.load(input)
+    dct = dl.load(input, nR = nR)
     import time
     t0 = time.time()
     stitcher.stitching(dct)
@@ -89,7 +96,7 @@ def stitch(input: str, output: str, overlap=0.12):
     stitcher.export_loc(os.path.dirname(output))
 
 
-def main(argv): stitch(input=FLAGS.input, output=FLAGS.output, overlap=FLAGS.overlap)
+def main(argv): stitch(input=FLAGS.input, output=FLAGS.output, overlap=FLAGS.overlap, nR = FLAGS.nR)
 
 
 """
@@ -102,4 +109,5 @@ if __name__ == '__main__':
     flags.DEFINE_string('input', '', 'FOV images storage location')
     flags.DEFINE_string('output', '', 'Save path of stitch result files')
     flags.DEFINE_float('overlap', 0.12, 'FOV images Overlap.', lower_bound=0)
+    flags.DEFINE_float('nR', 0, 'rows')
     app.run(main)
